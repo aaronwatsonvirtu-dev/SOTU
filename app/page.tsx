@@ -15,7 +15,7 @@ interface CartItem extends Product {
   cartId: number;
 }
 
-const products: Product[] = [
+const initialProducts: Product[] = [
   { id: 1, name: 'BASSLINE TEE', price: 45, image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800&q=80', category: 'tees' },
   { id: 2, name: 'NIGHTSHIFT HOODIE', price: 85, image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=800&q=80', category: 'hoodies' },
   { id: 3, name: '4AM CARGO PANTS', price: 95, image: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=800&q=80', category: 'bottoms' },
@@ -25,10 +25,16 @@ const products: Product[] = [
 ];
 
 export default function SOTUShopfront() {
+  const [products, setProducts] = useState<Product[]>(initialProducts);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [heroIndex, setHeroIndex] = useState(0);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [formData, setFormData] = useState({ name: '', price: 0, image: '', category: '' });
 
   const heroImages = [
     'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1600&q=80',
@@ -46,8 +52,203 @@ export default function SOTUShopfront() {
 
   const cartTotal = cart.reduce((sum, item) => sum + item.price, 0);
 
+  const ADMIN_PASSWORD = 'sotu2024'; // Change this to your secure password
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === ADMIN_PASSWORD) {
+      setIsAuthenticated(true);
+      setPassword('');
+    } else {
+      alert('Invalid password');
+    }
+  };
+
+  const handleAddProduct = () => {
+    if (!formData.name || !formData.price || !formData.image || !formData.category) {
+      alert('Please fill all fields');
+      return;
+    }
+    const newProduct: Product = {
+      id: Math.max(...products.map(p => p.id), 0) + 1,
+      ...formData,
+      price: Number(formData.price)
+    };
+    setProducts([...products, newProduct]);
+    setFormData({ name: '', price: 0, image: '', category: '' });
+  };
+
+  const handleUpdateProduct = () => {
+    if (!editingProduct) return;
+    setProducts(products.map(p => 
+      p.id === editingProduct.id 
+        ? { ...editingProduct, ...formData, price: Number(formData.price) }
+        : p
+    ));
+    setEditingProduct(null);
+    setFormData({ name: '', price: 0, image: '', category: '' });
+  };
+
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product);
+    setFormData({
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      category: product.category
+    });
+  };
+
+  const handleDeleteProduct = (id: number) => {
+    if (confirm('Are you sure you want to delete this product?')) {
+      setProducts(products.filter(p => p.id !== id));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black text-white font-mono">
+      {showAdmin && !isAuthenticated ? (
+        <div className="min-h-screen flex items-center justify-center px-4">
+          <div className="bg-zinc-900 p-8 rounded-lg max-w-md w-full">
+            <h2 className="text-2xl font-bold mb-6 text-center">ADMIN LOGIN</h2>
+            <form onSubmit={handleLogin}>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter admin password"
+                className="w-full bg-black border border-zinc-800 px-4 py-3 mb-4 focus:outline-none focus:border-purple-500"
+              />
+              <button
+                type="submit"
+                className="w-full bg-purple-600 hover:bg-purple-700 py-3 font-bold transition"
+              >
+                LOGIN
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAdmin(false)}
+                className="w-full mt-2 bg-zinc-800 hover:bg-zinc-700 py-3 font-bold transition"
+              >
+                BACK TO SHOP
+              </button>
+            </form>
+          </div>
+        </div>
+      ) : showAdmin && isAuthenticated ? (
+        <div className="min-h-screen p-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex justify-between items-center mb-8">
+              <h1 className="text-4xl font-bold">ADMIN DASHBOARD</h1>
+              <button
+                onClick={() => {
+                  setShowAdmin(false);
+                  setIsAuthenticated(false);
+                }}
+                className="bg-zinc-800 hover:bg-zinc-700 px-6 py-2 transition"
+              >
+                EXIT ADMIN
+              </button>
+            </div>
+
+            <div className="bg-zinc-900 p-6 rounded-lg mb-8">
+              <h2 className="text-2xl font-bold mb-4">
+                {editingProduct ? 'EDIT PRODUCT' : 'ADD NEW PRODUCT'}
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <input
+                  type="text"
+                  placeholder="Product Name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="bg-black border border-zinc-800 px-4 py-3 focus:outline-none focus:border-purple-500"
+                />
+                <input
+                  type="number"
+                  placeholder="Price"
+                  value={formData.price || ''}
+                  onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
+                  className="bg-black border border-zinc-800 px-4 py-3 focus:outline-none focus:border-purple-500"
+                />
+                <input
+                  type="text"
+                  placeholder="Image URL"
+                  value={formData.image}
+                  onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                  className="bg-black border border-zinc-800 px-4 py-3 focus:outline-none focus:border-purple-500"
+                />
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  className="bg-black border border-zinc-800 px-4 py-3 focus:outline-none focus:border-purple-500"
+                >
+                  <option value="">Select Category</option>
+                  <option value="tees">Tees</option>
+                  <option value="hoodies">Hoodies</option>
+                  <option value="bottoms">Bottoms</option>
+                  <option value="outerwear">Outerwear</option>
+                </select>
+              </div>
+              <div className="flex gap-4">
+                {editingProduct ? (
+                  <>
+                    <button
+                      onClick={handleUpdateProduct}
+                      className="flex-1 bg-purple-600 hover:bg-purple-700 py-3 font-bold transition"
+                    >
+                      UPDATE PRODUCT
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingProduct(null);
+                        setFormData({ name: '', price: 0, image: '', category: '' });
+                      }}
+                      className="bg-zinc-800 hover:bg-zinc-700 px-6 py-3 font-bold transition"
+                    >
+                      CANCEL
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleAddProduct}
+                    className="flex-1 bg-purple-600 hover:bg-purple-700 py-3 font-bold transition"
+                  >
+                    ADD PRODUCT
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-zinc-900 p-6 rounded-lg">
+              <h2 className="text-2xl font-bold mb-4">MANAGE PRODUCTS ({products.length})</h2>
+              <div className="space-y-4">
+                {products.map(product => (
+                  <div key={product.id} className="flex items-center gap-4 bg-black p-4 rounded">
+                    <img src={product.image} alt={product.name} className="w-20 h-20 object-cover" />
+                    <div className="flex-1">
+                      <h3 className="font-bold">{product.name}</h3>
+                      <p className="text-sm text-zinc-400">${product.price} • {product.category}</p>
+                    </div>
+                    <button
+                      onClick={() => handleEditProduct(product)}
+                      className="bg-blue-600 hover:bg-blue-700 px-4 py-2 transition"
+                    >
+                      EDIT
+                    </button>
+                    <button
+                      onClick={() => handleDeleteProduct(product.id)}
+                      className="bg-red-600 hover:bg-red-700 px-4 py-2 transition"
+                    >
+                      DELETE
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+      <>
       {/* Header */}
       <header className="fixed top-0 w-full bg-black/90 backdrop-blur-sm z-50 border-b border-zinc-800">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -258,9 +459,17 @@ export default function SOTUShopfront() {
         </div>
         
         <div className="max-w-7xl mx-auto mt-12 pt-8 border-t border-zinc-800 text-center text-zinc-500 text-xs">
-          © 2024 SOTU. ALL RIGHTS RESERVED.
+          © 2024 SOTU. ALL RIGHTS RESERVED. 
+          <button 
+            onClick={() => setShowAdmin(true)}
+            className="ml-4 hover:text-purple-400 transition"
+          >
+            ADMIN
+          </button>
         </div>
       </footer>
+      </>
+      )}
     </div>
   );
 }
